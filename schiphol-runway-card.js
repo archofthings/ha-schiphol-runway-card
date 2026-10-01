@@ -1,7 +1,7 @@
 (function() {
   "use strict";
 
-  var VERSION = "1.0.2";
+  var VERSION = "1.0.3";
 
   // Collapsible console banner (expand to see details)
   console.groupCollapsed(
@@ -29,17 +29,31 @@
       line: [23.0,13.0, 21.1,46.7], labels: [["18R",29.2,16.3],["36L",14.9,43.5]] },
     { key: "18c_36c_zwanenburgbaan",  designator: "18C/36C", name: "Zwanenburgbaan",
       line: [40.0,44.0, 38.3,73.2], labels: [["18C",46.2,47.2],["36C",32.1,70.0]] },
-    { key: "09_27_oostbaan",          designator: "09/27",   name: "Oostbaan",
+    // 09/27 and 04/22 were named the wrong way round before integration v1.7.0;
+    // "legacy" is the old key / entity suffix, still accepted for existing installs.
+    { key: "09_27_buitenveldertbaan", designator: "09/27",   name: "Buitenveldertbaan", legacy: "09_27_oostbaan",
       line: [43.7,58.6, 74.4,56.8], labels: [["09",46.3,52.1],["27",71.9,63.3]] },
     { key: "18l_36r_aalsmeerbaan",    designator: "18L/36R", name: "Aalsmeerbaan",
       line: [64.2,54.0, 62.5,84.1], labels: [["18L",70.4,57.2],["36R",56.3,80.9]] },
     { key: "06_24_kaagbaan",          designator: "06/24",   name: "Kaagbaan",
       line: [36.4,87.0, 62.6,70.5], labels: [["06",35.5,80.1],["24",63.6,77.4]] },
-    { key: "04_22_buitenveldertbaan", designator: "04/22",   name: "Buitenveldertbaan",
+    { key: "04_22_oostbaan",          designator: "04/22",   name: "Oostbaan", legacy: "04_22_buitenveldertbaan",
       line: [66.2,74.6, 78.9,60.2], labels: [["04",63.4,68.2],["22",81.8,66.6]] },
   ];
 
   function defaultEntity(key) { return "sensor.schiphol_airport_eham_" + key; }
+
+  // Explicit config (new or legacy key) wins; otherwise prefer the new default
+  // entity ID and fall back to the legacy one if only that exists.
+  function resolveEntity(rwy, ents, states) {
+    if (ents[rwy.key]) return ents[rwy.key];
+    if (rwy.legacy && ents[rwy.legacy]) return ents[rwy.legacy];
+    var def = defaultEntity(rwy.key);
+    if (rwy.legacy && states && !states[def] && states[defaultEntity(rwy.legacy)]) {
+      return defaultEntity(rwy.legacy);
+    }
+    return def;
+  }
 
   var DEFAULT_PEAK = {
     inbound:  "binary_sensor.schiphol_airport_eham_inbound_peak",
@@ -128,11 +142,8 @@
       setConfig(config) {
         this._config = Object.assign({}, DEFAULTS, config || {});
         var ents = (config && config.entities) || {};
-        this._resolved = {};
-        for (var i = 0; i < RUNWAYS.length; i++) {
-          var k = RUNWAYS[i].key;
-          this._resolved[k] = ents[k] || defaultEntity(k);
-        }
+        this._ents = ents;
+        this._resolveAll();
         this._peakIn  = this._config.inbound_peak_entity  || DEFAULT_PEAK.inbound;
         this._peakOut = this._config.outbound_peak_entity || DEFAULT_PEAK.outbound;
         this._peakAll = this._config.peak_entity          || DEFAULT_PEAK.peak;
@@ -286,8 +297,17 @@
         if (pbOut) pbOut.addEventListener("click", function(){ self._moreInfo(self._peakOut); });
       }
 
+      _resolveAll() {
+        var states = this._hass ? this._hass.states : null;
+        this._resolved = {};
+        for (var i = 0; i < RUNWAYS.length; i++) {
+          this._resolved[RUNWAYS[i].key] = resolveEntity(RUNWAYS[i], this._ents, states);
+        }
+      }
+
       _update() {
         var states = this._hass.states;
+        this._resolveAll();
         var sr = this.shadowRoot;
         var C = this._colors;
         var inColor = this._inC, outColor = this._outC;
@@ -501,7 +521,8 @@
           show_chips:         this._config.show_chips !== undefined ? this._config.show_chips : DEFAULTS.show_chips,
         };
         var ents = this._config.entities || {};
-        RUNWAYS.forEach(function(r) { d["e_" + r.key] = ents[r.key] || defaultEntity(r.key); });
+        var states = this._hass ? this._hass.states : null;
+        RUNWAYS.forEach(function(r) { d["e_" + r.key] = resolveEntity(r, ents, states); });
         return d;
       }
 

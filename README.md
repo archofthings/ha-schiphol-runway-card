@@ -90,13 +90,15 @@ both_color: amber
 entities:
   18r_36l_polderbaan: sensor.schiphol_airport_eham_18r_36l_polderbaan
   18c_36c_zwanenburgbaan: sensor.schiphol_airport_eham_18c_36c_zwanenburgbaan
-  09_27_oostbaan: sensor.schiphol_airport_eham_09_27_oostbaan
+  09_27_buitenveldertbaan: sensor.schiphol_airport_eham_09_27_buitenveldertbaan
   18l_36r_aalsmeerbaan: sensor.schiphol_airport_eham_18l_36r_aalsmeerbaan
   06_24_kaagbaan: sensor.schiphol_airport_eham_06_24_kaagbaan
-  04_22_buitenveldertbaan: sensor.schiphol_airport_eham_04_22_buitenveldertbaan
+  04_22_oostbaan: sensor.schiphol_airport_eham_04_22_oostbaan
 ```
 
 The `entities` keys are fixed runway identifiers; map each to whatever sensor entity ID your integration created. If omitted, the card falls back to the default `sensor.schiphol_airport_eham_<key>` IDs.
+
+> **Runway names corrected:** 09/27 is **Buitenveldertbaan** and 04/22 is **Oostbaan** (earlier versions had them swapped). Existing installs that still have `sensor.schiphol_airport_eham_09_27_oostbaan` / `..._04_22_buitenveldertbaan`, or card configs using the old `09_27_oostbaan` / `04_22_buitenveldertbaan` keys, keep working — the card picks up whichever exists.
 
 ### Peak entities (optional overrides)
 
@@ -128,7 +130,7 @@ The card can render your runway overlay on top of an aerial/satellite image:
 1. Save a satellite screenshot of Schiphol (north-up, roughly square, framing all runways) to `/config/www/`, e.g. `schiphol_sat.png`.
 2. In the card editor set **Background image URL** to `/local/schiphol_sat.png` and adjust opacity.
 
-> The runway geometry follows the LVNL schematic, which is close to but not a pixel-perfect geographic projection. Crop your image so Polderbaan sits upper-left and Oostbaan runs along the bottom for the best alignment.
+> The runway geometry follows the LVNL schematic, which is close to but not a pixel-perfect geographic projection. Crop your image so Polderbaan sits upper-left and Buitenveldertbaan runs along the bottom for the best alignment.
 
 ---
 
@@ -145,10 +147,10 @@ The card reads these entities (created by the integration):
 |--------|---------|
 | `sensor.schiphol_airport_eham_18r_36l_polderbaan` | Runway state |
 | `sensor.schiphol_airport_eham_18c_36c_zwanenburgbaan` | Runway state |
-| `sensor.schiphol_airport_eham_09_27_oostbaan` | Runway state |
+| `sensor.schiphol_airport_eham_09_27_buitenveldertbaan` | Runway state |
 | `sensor.schiphol_airport_eham_18l_36r_aalsmeerbaan` | Runway state |
 | `sensor.schiphol_airport_eham_06_24_kaagbaan` | Runway state |
-| `sensor.schiphol_airport_eham_04_22_buitenveldertbaan` | Runway state |
+| `sensor.schiphol_airport_eham_04_22_oostbaan` | Runway state |
 | `sensor.schiphol_airport_eham_peak_time` | Peak status |
 | `binary_sensor.schiphol_airport_eham_inbound_peak` | Inbound peak boolean |
 | `binary_sensor.schiphol_airport_eham_outbound_peak` | Outbound peak boolean |
