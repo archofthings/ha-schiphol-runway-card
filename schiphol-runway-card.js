@@ -29,7 +29,7 @@
       line: [23.0,13.0, 21.1,46.7], labels: [["18R",29.2,16.3],["36L",14.9,43.5]] },
     { key: "18c_36c_zwanenburgbaan",  designator: "18C/36C", name: "Zwanenburgbaan",
       line: [40.0,44.0, 38.3,73.2], labels: [["18C",46.2,47.2],["36C",32.1,70.0]] },
-    // 09/27 and 04/22 were named the wrong way round before integration v1.7.0;
+    // 09/27 and 04/22 were named the wrong way round before integration v1.6.1;
     // "legacy" is the old key / entity suffix, still accepted for existing installs.
     { key: "09_27_buitenveldertbaan", designator: "09/27",   name: "Buitenveldertbaan", legacy: "09_27_oostbaan",
       line: [43.7,58.6, 74.4,56.8], labels: [["09",46.3,52.1],["27",71.9,63.3]] },
