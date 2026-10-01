@@ -115,11 +115,14 @@ The `entities` keys are fixed runway identifiers; map each to whatever sensor en
 | Color | Meaning |
 |-------|---------|
 | Grey | Runway not in use |
+| Grey, dashed | No data — the sensor is unavailable (e.g. the data source is down) |
 | Green (default) | Inbound — landings |
 | Blue (default) | Outbound — takeoffs |
 | Amber (default) | Both landings and takeoffs |
 
 Colors are chosen from the Home Assistant palette and adapt to your theme. Active runways glow, show their heading (e.g. `HDG 27`), and display an airplane pointing in the direction of traffic.
+
+The time in the card header is when the integration last fetched data (from the peak sensor's `last_fetched` attribute, integration v1.8.0+), not the current time. Peak "until" times are in Dutch local time, wherever you view the card from.
 
 ---
 
@@ -166,7 +169,8 @@ If your entity IDs differ, override them via the `entities` map in the card conf
 - Confirm the resource URL matches the file name exactly (hyphens vs underscores)
 - Check the browser console for the startup banner; if absent, the resource isn't loading
 
-**Card shows but no colors / no data**
+**Card shows but no colors / runways show "no data"**
+- "no data" means the runway sensors are `unavailable`; check the integration's log for fetch errors
 - Confirm the integration is installed and its entities exist (**Developer Tools -> States**, search `schiphol`)
 - If your entity IDs differ from the defaults, set them via the `entities` map
 

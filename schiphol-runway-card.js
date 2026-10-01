@@ -1,7 +1,7 @@
 (function() {
   "use strict";
 
-  var VERSION = "1.0.3";
+  var VERSION = "1.1.0";
 
   // Collapsible console banner (expand to see details)
   console.groupCollapsed(
@@ -19,6 +19,7 @@
     title:              "Schiphol Runways",
     inbound_color:      "green",
     outbound_color:     "blue",
+    both_color:         "amber",
     background_image:   "https://cdn.jsdelivr.net/gh/archofthings/ha-Schiphol-Runway-card@main/www/schiphol_sat.png",
     background_opacity: 0.55,
     show_chips:         true,
@@ -107,8 +108,7 @@
   }
   function currentWindowEnd(windows) {
     if (!windows || !windows.length) return null;
-    var now = new Date();
-    var cur = now.getHours() * 60 + now.getMinutes();
+    var cur = nlMinutesNow();
     for (var i = 0; i < windows.length; i++) {
       var p = (windows[i] || "").split(" - ");
       if (p.length !== 2) continue;
@@ -119,6 +119,25 @@
     }
     return null;
   }
+  // Current minutes past midnight in Dutch local time (peak windows are NL time).
+  function nlMinutesNow() {
+    try {
+      var parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+      }).formatToParts(new Date());
+      var h = 0, m = 0;
+      parts.forEach(function(p) {
+        if (p.type === "hour") h = parseInt(p.value, 10);
+        if (p.type === "minute") m = parseInt(p.value, 10);
+      });
+      return h * 60 + m;
+    } catch (e) {
+      var now = new Date();
+      return now.getHours() * 60 + now.getMinutes();
+    }
+  }
+  function hhmm(d) { return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+
   function peakField(pkEnt, field) {
     if (!pkEnt || !pkEnt.attributes || !pkEnt.attributes.all_peaks) return [];
     return pkEnt.attributes.all_peaks
@@ -150,9 +169,12 @@
 
         var inC = colorVar(this._config.inbound_color);
         var outC = colorVar(this._config.outbound_color);
+        var bothC = colorVar(this._config.both_color);
         this._inC = inC; this._outC = outC;
         this._colors = {
           not_in_use: { line: "var(--disabled-text-color,#9aa5b1)", active:false, text:"not in use" },
+          unavailable:{ line: "var(--disabled-text-color,#9aa5b1)", active:false, dashed:true, text:"no data" },
+          inbound_and_outbound: { line: bothC, active:true, text:"landing + takeoff" },
           inbound:    { line: inC,  active:true, text:"landing" },
           outbound:   { line: outC, active:true, text:"takeoff" },
         };
@@ -312,14 +334,30 @@
         var C = this._colors;
         var inColor = this._inC, outColor = this._outC;
 
+        // Show when the data was last fetched, not the browser clock.
         var upd = sr.getElementById("upd");
-        if (upd) { var t = new Date(); upd.textContent = ("0"+t.getHours()).slice(-2)+":"+("0"+t.getMinutes()).slice(-2); }
+        if (upd) {
+          var pk = states[this._peakAll];
+          var stamp = pk && pk.attributes && pk.attributes.last_fetched ? new Date(pk.attributes.last_fetched) : null;
+          if (!stamp || isNaN(stamp)) {
+            stamp = null;
+            for (var j = 0; j < RUNWAYS.length; j++) {
+              var e = states[this._resolved[RUNWAYS[j].key]];
+              if (e && e.last_updated && e.state !== "unavailable") {
+                var d = new Date(e.last_updated);
+                if (!stamp || d > stamp) stamp = d;
+              }
+            }
+          }
+          upd.textContent = stamp ? "updated " + hhmm(stamp) : "";
+        }
 
         for (var i = 0; i < RUNWAYS.length; i++) {
           var rwy = RUNWAYS[i];
           var entity = states[this._resolved[rwy.key]];
-          var state = (entity && entity.state) ? entity.state : "not_in_use";
-          var attrs = (entity && entity.attributes) ? entity.attributes : {};
+          var state = (entity && entity.state) ? entity.state : "unavailable";
+          if (state === "unknown") state = "unavailable";
+          var attrs = (entity && entity.attributes && state !== "unavailable") ? entity.attributes : {};
           var col = C[state] || C.not_in_use;
 
           var line = sr.getElementById("rl-" + rwy.key);
@@ -327,6 +365,7 @@
             line.style.stroke = col.line;
             line.style.strokeWidth = col.active ? "2" : "1.4";
             line.style.filter = col.active ? "drop-shadow(0 0 1.2px " + col.line + ")" : "none";
+            line.style.strokeDasharray = col.dashed ? "1.5 1" : "";
           }
           var labelFill = col.active ? col.line : "var(--secondary-text-color,#888)";
           var rla = sr.getElementById("rla-" + rwy.key);
@@ -437,6 +476,7 @@
     { type: "grid", name: "", schema: [
       { name: "inbound_color",  selector: { ui_color: {} } },
       { name: "outbound_color", selector: { ui_color: {} } },
+      { name: "both_color",     selector: { ui_color: {} } },
     ]},
     { type: "grid", name: "", schema: [
       { name: "background_opacity", selector: { number: { min: 0, max: 1, step: 0.05, mode: "slider" } } },
@@ -452,6 +492,7 @@
     background_image:   "Background image URL",
     inbound_color:      "Landing color",
     outbound_color:     "Takeoff color",
+    both_color:         "Landing + takeoff color",
     background_opacity: "Background opacity",
     show_chips:         "Show runway chips",
   };
@@ -518,6 +559,7 @@
           background_opacity: this._config.background_opacity,
           inbound_color:      this._config.inbound_color,
           outbound_color:     this._config.outbound_color,
+          both_color:         this._config.both_color,
           show_chips:         this._config.show_chips !== undefined ? this._config.show_chips : DEFAULTS.show_chips,
         };
         var ents = this._config.entities || {};
@@ -554,6 +596,7 @@
         if (v.background_opacity != null && v.background_opacity !== DEFAULTS.background_opacity) cfg.background_opacity = v.background_opacity;
         if (v.inbound_color && v.inbound_color !== DEFAULTS.inbound_color) cfg.inbound_color = v.inbound_color;
         if (v.outbound_color && v.outbound_color !== DEFAULTS.outbound_color) cfg.outbound_color = v.outbound_color;
+        if (v.both_color && v.both_color !== DEFAULTS.both_color) cfg.both_color = v.both_color;
         if (v.show_chips !== undefined && v.show_chips !== DEFAULTS.show_chips) cfg.show_chips = v.show_chips;
 
         this._config = Object.assign({}, DEFAULTS, cfg);
